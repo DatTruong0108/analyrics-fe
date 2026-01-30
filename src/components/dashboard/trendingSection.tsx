@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 
 /* Application Package */
 import SongCard from "./songCard";
+import SongCardSkeleton from "./songCardSkeleton";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 
 interface TrendingSectionProps {
@@ -73,11 +74,17 @@ export default function TrendingSection({ onSongClick }: TrendingSectionProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {songs.map((song, index) => (
-                    <div key={`${song.id}-${index}`} onClick={() => onSongClick(song)}>
-                        <SongCard song={song} />
-                    </div>
-                ))}
+                {loading ? (
+                    Array.from({ length: LIMIT }).map((_, i) => (
+                        <SongCardSkeleton key={i} />
+                    ))
+                ) : (
+                    songs.map((song, index) => (
+                        <div key={`${song.id}-${index}`} onClick={() => onSongClick(song)}>
+                            <SongCard song={song} />
+                        </div>
+                    ))
+                )}
             </div>
 
             {hasMore && (

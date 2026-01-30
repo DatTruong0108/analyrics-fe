@@ -12,9 +12,6 @@ export default function Hero() {
             </div>
 
             <div className="max-w-2xl space-y-4">
-                {/* <h2 className="text-xl md:text-2xl font-bold bg-linear-gradient-to-r from-white via-zinc-400 to-zinc-600 bg-clip-text text-transparent italic">
-                    Đọc vị từng thanh âm — Thấu cảm mọi câu chữ.
-                </h2> */}
                 <p className="text-sm md:text-base text-zinc-500 leading-relaxed font-light px-4">
                     Phía sau mỗi giai điệu là một vũ trụ ngôn từ chưa được khai phá. Chúng tôi sử dụng trí tuệ nhân tạo để giúp bạn chạm vào lớp nghĩa sâu nhất, những ẩn dụ tầng tầng lớp lớp mà nghệ sĩ đã gửi gắm.
                 </p>
