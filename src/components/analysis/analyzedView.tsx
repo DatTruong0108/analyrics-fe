@@ -12,33 +12,55 @@ import { IAnalysisResult } from "@/types/analysis/analysis.interface";
 
 export type AnalysisWithSong = IAnalysisResult & { song: ISongMetadata };
 
+interface AnalyzedViewProps {
+    data: AnalysisWithSong;
+    onBack: () => void;
+    onRegenerate: () => void;
+    isFromCache: boolean;
+}
+
 const ebGaramond = EB_Garamond({
     subsets: ["latin", "vietnamese"],
     weight: ["400", "500"],
-    style: ["italic"]
+    style: ["italic"],
+    display: "swap"
 });
 
-export default function AnalyzedView({ data, onBack }: { data: AnalysisWithSong, onBack: () => void }) {
+export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }: AnalyzedViewProps) {
     const [openLyricsIndex, setOpenLyricsIndex] = useState<number | null>(null);
+    const [isRotating, setIsRotating] = useState(false);
+
+    const handleRegenerate = () => {
+        setIsRotating(true);
+        onRegenerate();
+    }
 
     return (
-        <div className="min-h-screen bg-black text-white pb-20 relative selection:bg-purple-500/30">
+        <div className="min-h-screen bg-transparent text-white pb-20 relative selection:bg-purple-500/30">
 
             {/* 1. Background Ambient (Ảnh bài hát bị blur đen) */}
-            <div className="fixed inset-0 -z-10 overflow-hidden">
-                <motion.div
-                    initial={{ opacity: 0, scale: 1.1 }}
-                    animate={{ opacity: 0.5, scale: 1 }}
-                    transition={{ duration: 1.5 }}
-                    className="absolute inset-0 bg-cover bg-center blur-[100px] saturate-[1.8]"
-                    style={{
-                        backgroundImage: `url(${data.song.imageUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        willChange: 'transform, opacity',
-                    }}
-                />
-                <div className="absolute inset-0 bg-black/60" />
+            <div className="fixed inset-0 -z-10 overflow-hidden background-img">
+                {data.song && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 1.1 }}
+                            animate={{ opacity: 0.4, scale: 1 }}
+                            transition={{ duration: 1.5 }}
+                            className="absolute inset-0"
+                            style={{
+                                backgroundImage: `url(${data.song.imageUrl})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                willChange: 'transform, opacity',
+                            }}
+                        />
+                        <motion.div
+                            animate={{ opacity: [0.4, 0.6, 0.4] }}
+                            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute inset-0 bg-black/70 backdrop-blur-3xl"
+                        />
+                    </>
+                )}
             </div>
 
             {/* Nút quay lại */}
@@ -53,7 +75,7 @@ export default function AnalyzedView({ data, onBack }: { data: AnalysisWithSong,
             </motion.button>
 
             {/* Header */}
-            <header className="pt-32 px-6 max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-10">
+            <header className="pt-24 px-6 max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-10">
                 <motion.div
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -105,6 +127,28 @@ export default function AnalyzedView({ data, onBack }: { data: AnalysisWithSong,
                     <p className="text-sm md:text-lg italic font-light leading-relaxed text-zinc-100 relative z-10">
                         "{data.coreMessage}"
                     </p>
+
+                    {isFromCache && (
+                        <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between relative z-10">
+                            <div className="flex items-center gap-2 text-[10px] text-zinc-500 uppercase tracking-widest">
+                                <span>💾</span>
+                                <span>Kết quả đã lưu từ lần phân tích trước</span>
+                            </div>
+
+                            <button
+                                onClick={handleRegenerate}
+                                className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
+                            >
+                                <Icon
+                                    icon="ph:arrow-clockwise-bold"
+                                    className={`text-xs ${isRotating ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`}
+                                />
+                                <span className="text-[10px] font-bold uppercase tracking-widest underline decoration-dotted underline-offset-4">
+                                    Tạo phân tích mới
+                                </span>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </motion.section>
 
@@ -148,7 +192,7 @@ export default function AnalyzedView({ data, onBack }: { data: AnalysisWithSong,
                                             className="overflow-hidden"
                                         >
                                             <div className="bg-black/40 border border-white/5 p-6 rounded-2xl shadow-inner">
-                                                <p className="whitespace-pre-line italic text-zinc-400 font-serif text-[15px] leading-loose tracking-wide">
+                                                <p className={`whitespace-pre-line italic text-zinc-400 font-serif text-[18px] leading-loose tracking-wide ${ebGaramond.className}`}>
                                                     {item.lyricsQuote}
                                                 </p>
                                             </div>
@@ -163,7 +207,7 @@ export default function AnalyzedView({ data, onBack }: { data: AnalysisWithSong,
                 {/* Giải mã Slang/Metaphor */}
                 <aside className="lg:col-span-4 space-y-10">
                     {/* Cột Lời bài hát đầy đủ */}
-                    <div className="bg-zinc-900/50 backdrop-blur-md border border-white/5 rounded-3xl p-6 shadow-xl">
+                    <div className="bg-zinc-900/50 backdrop-blur-md border border-white/5 rounded-3xl p-6 shadow-xl lyrics-container">
                         <h3 className="text-lg font-bold mb-6 flex items-center gap-2 border-b border-white/5 pb-4">
                             <Icon icon="ph:music-notes-simple-bold" className="text-zinc-500" /> Lời bài hát
                         </h3>
