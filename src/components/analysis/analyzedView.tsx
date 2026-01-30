@@ -79,7 +79,9 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                 <motion.div
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="relative w-64 h-64 md:w-72 md:h-72 rounded-4xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 shrink-0"
+                    whileHover={{ scale: 1.05, rotate: 2 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    className="relative w-64 h-64 md:w-72 md:h-72 rounded-4xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 shrink-0 cursor-pointer"
                 >
                     <Image
                         src={data.song.imageUrl}
