@@ -1,6 +1,7 @@
 /* Application Package */
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 import SongCard from "./songCard";
+import SongCardSkeleton from "./songCardSkeleton";
 
 interface SearchResultsProps {
     songs: ISongMetadata[];
@@ -11,8 +12,12 @@ interface SearchResultsProps {
 export default function SearchResults({ songs, loading, onSongClick }: SearchResultsProps) {
     if (loading) {
         return (
-            <div className="mt-20 flex justify-center">
-                <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-200 rounded-full animate-spin"></div>
+            <div className="mt-12 space-y-8 animate-slide-up">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <SongCardSkeleton key={i} />
+                    ))}
+                </div>
             </div>
         );
     }

@@ -123,19 +123,17 @@ export default function HomeContainer() {
                 <SearchBar
                     onSearch={handleSearch}
                     onClear={handleClearSearch}
-                    isSearching={isSearching}
+                    isSearching={loading}
                 />
 
                 {/* 4. Logic hiển thị có điều kiện:
-            - Nếu KHÔNG search: Hiện Quotes -> Trending
-            - Nếu ĐANG search: Hiện Search Results (Ẩn Quotes và Trending)
-        */}
+                    - Nếu KHÔNG search: Hiện Quotes -> Trending
+                    - Nếu ĐANG search: Hiện Search Results (Ẩn Quotes và Trending)
+                */}
                 {!isSearching ? (
                     <div className="w-full space-y-4 animate-fade-in">
-                        {/* Quote nằm ngay dưới thanh tìm kiếm như ý bạn */}
                         <QuoteSection />
 
-                        {/* Đường kẻ ngang tinh tế để phân tách phần Trending */}
                         <div className="w-full h-px bg-linear-gradient-to-r from-transparent via-zinc-900 to-transparent my-8" />
 
                         <TrendingSection onSongClick={handleAnalyze} />
@@ -152,7 +150,6 @@ export default function HomeContainer() {
 
             </main>
 
-            {/* Footer đơn giản cho đúng chất minimalist */}
             <footer className="py-10 text-center border-t border-zinc-950">
                 <p className="text-[10px] text-zinc-600 uppercase tracking-[0.5em]">
                     Analyrics — 2026 Edition
