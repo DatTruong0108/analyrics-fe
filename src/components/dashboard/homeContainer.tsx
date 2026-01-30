@@ -23,6 +23,7 @@ export default function HomeContainer() {
     const [loading, setLoading] = useState(false);
     const [analysisData, setAnalysisData] = useState<AnalysisWithSong | null>(null);
     const [errorStatus, setErrorStatus] = useState<number>(200);
+    const [isFromCache, setIsFromCache] = useState(false);
 
     const handleSearch = async (query: string) => {
         if (!query.trim()) return;
@@ -58,7 +59,7 @@ export default function HomeContainer() {
         setResults([]);
     };
 
-    const handleAnalyze = async (song: ISongMetadata) => {
+    const handleAnalyze = async (song: ISongMetadata, forceRefresh: boolean = false) => {
         if (!song) return;
         setView('loading');
 
@@ -79,6 +80,7 @@ export default function HomeContainer() {
                     artist: song.artist,
                     imageUrl: song.imageUrl,
                     spotifyUrl: song.spotifyUrl,
+                    forceRefresh
                 }),
             });
 
@@ -86,6 +88,7 @@ export default function HomeContainer() {
 
             if (response.statusCode === 200) {
                 setAnalysisData(response.data);
+                setIsFromCache(response.data.fromCache || false);
                 setView('analysis');
             } else {
                 setErrorStatus(response.statusCode);
@@ -104,12 +107,12 @@ export default function HomeContainer() {
 
     if (view === 'loading') return <LoadingView />;
     if (view === 'error') return <ErrorView status={errorStatus} onBack={handleBackToDashboard} />;
-    if (view === 'analysis' && analysisData) return <AnalyzedView data={analysisData} onBack={handleBackToDashboard} />;
+    if (view === 'analysis' && analysisData) return <AnalyzedView data={analysisData} onBack={handleBackToDashboard} isFromCache={isFromCache} onRegenerate={() => handleAnalyze(analysisData.song, true)} />;
 
     return (
         <div className="min-h-screen bg-black text-white selection:bg-zinc-800 selection:text-zinc-200">
             {/* 1. Navbar: Luôn cố định ở trên cùng */}
-            <Navbar />
+            {/* <Navbar /> */}
 
             <main className="max-w-6xl mx-auto px-6 pt-18 pb-16 flex flex-col items-center">
 
