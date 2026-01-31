@@ -54,15 +54,6 @@ export default function TrendingSection({ onSongClick }: TrendingSectionProps) {
         fetchTrending(0);
     }, []);
 
-    if (loading) {
-        return (
-            <div className="mt-20 flex flex-col items-center justify-center space-y-4">
-                <div className="w-10 h-10 border-2 border-zinc-800 border-t-zinc-200 rounded-full animate-spin"></div>
-                <p className="text-zinc-500 text-sm animate-pulse">Đang tải bài hát thịnh hành...</p>
-            </div>
-        );
-    }
-
     return (
         <div className="border-t border-zinc-900 pt-16">
             <div className="flex flex-col items-center mb-10 text-center">
