@@ -152,7 +152,10 @@ export default function HomeContainer() {
 
             <footer className="py-10 text-center border-t border-zinc-950">
                 <p className="text-[10px] text-zinc-600 uppercase tracking-[0.5em]">
-                    Analyrics — 2026 Edition
+                    Analyrics — 2026 Edition by{" "}
+                    <a href="https://facebook.com/tora0108" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white underline decoration-zinc-800 hover:decoration-white underline-offset-4 transition-all duration-300">
+                        Dat Truong
+                    </a>
                 </p>
             </footer>
         </div>
