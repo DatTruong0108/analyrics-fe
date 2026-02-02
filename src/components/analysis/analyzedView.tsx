@@ -93,12 +93,24 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                 </motion.div>
 
                 <div className="flex-1 text-center md:text-left space-y-4">
-                    <motion.span
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-                        className="px-4 py-1.5 bg-white/20 backdrop-blur-xl border border-white/40 rounded-full text-[10px] md:text-xs uppercase font-black tracking-widest shadow-lg text-white inline-block"
-                    >
-                        VIBE: {data.vibe}
-                    </motion.span>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                        <span className="text-[10px] md:text-xs uppercase font-black tracking-[0.2em] text-white/50 select-none">
+                            Vibe:
+                        </span>
+                        <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                            {data.vibe.split(',').map((vibe, index) => (
+                                <motion.span
+                                    key={index}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.3 + index * 0.1 }}
+                                    className="px-4 py-1.5 bg-white/20 backdrop-blur-xl border border-white/40 rounded-full text-[10px] md:text-xs uppercase font-black tracking-widest shadow-lg text-white whitespace-nowrap"
+                                >
+                                    {vibe.trim()}
+                                </motion.span>
+                            ))}
+                        </div>
+                    </div>
                     <motion.h1
                         initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
                         className="text-5xl md:text-7xl font-black tracking-tighter drop-shadow-2xl"
