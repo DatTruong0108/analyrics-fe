@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EB_Garamond } from "next/font/google";
+import { EB_Garamond, Lora } from "next/font/google";
 import Image from "next/image";
 
 /* Application Package */
@@ -26,6 +26,13 @@ const ebGaramond = EB_Garamond({
     display: "swap"
 });
 
+const lora = Lora({
+    subsets: ["latin", "vietnamese"],
+    weight: ["400", "500"],
+    style: ["italic"],
+    display: "swap"
+});
+
 export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }: AnalyzedViewProps) {
     const [openLyricsIndex, setOpenLyricsIndex] = useState<number | null>(null);
     const [isRotating, setIsRotating] = useState(false);
@@ -37,8 +44,6 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
 
     return (
         <div className="min-h-screen bg-transparent text-white pb-20 relative selection:bg-purple-500/30">
-
-            {/* 1. Background Ambient (Ảnh bài hát bị blur đen) */}
             <div className="fixed inset-0 -z-10 overflow-hidden background-img">
                 {data.song && (
                     <>
@@ -63,7 +68,6 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                 )}
             </div>
 
-            {/* Nút quay lại */}
             <motion.button
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -226,9 +230,16 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                             <Icon icon="ph:music-notes-simple-bold" className="text-zinc-500" /> Lời bài hát
                         </h3>
                         <div className="max-h-[500px] overflow-y-auto pr-3 lyrics-scrollbar">
-                            <pre className={`whitespace-pre-wrap text-[17px] leading-relaxed text-zinc-300 ${ebGaramond.className}`}>
-                                {data.fullLyrics}
-                            </pre>
+                            <div className={`text-[17px] leading-relaxed tracking-wide text-zinc-300 ${lora.className}`}>
+                                {data.fullLyrics.split('\n').map((line, index) => (
+                                    <p
+                                        key={index}
+                                        className="opacity-100 md:opacity-40 md:hover:opacity-100 md:hover:text-glow transition-all duration-500 cursor-default min-h-[1.6em]"
+                                    >
+                                        {line || '\u00A0'}
+                                    </p>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -238,7 +249,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                             <Icon icon="ph:lightning-bold" className="text-cyan-400" /> Giải mã Slang
                         </h3>
                         <div className="space-y-4">
-                            {data.metaphors.map((meta: any, idx: number) => (
+                            {data.metaphors.map((meta: { phrase: string; meaning: string }, idx: number) => (
                                 <motion.div
                                     whileHover={{ x: 5 }}
                                     key={idx}
