@@ -28,7 +28,6 @@ export default function QuoteSection() {
     return (
         <div className="my-12 max-w-4xl mx-auto text-center px-6 animate-slide-up">
             <div className="relative group">
-                {/* Dấu ngoặc kép trang trí mờ */}
                 <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-8xl text-zinc-900 font-serif opacity-50 select-none">
                     “
                 </span>
@@ -45,8 +44,6 @@ export default function QuoteSection() {
                             <span className="mx-2 opacity-30">/</span>
                             <span className="font-medium opacity-60">{quote.source}</span>
                         </p>
-
-                        {/* 3. Nút bấm đổi Quote */}
                         <button
                             onClick={getRandomQuote}
                             title="Đổi câu khác"

@@ -39,7 +39,6 @@ export default function HomeContainer() {
             const res = await fetch(`${baseUrl}/analysis/search?q=${query}`);
 
             const response = await res.json();
-            console.log("🚀 ~ handleSearch ~ response:", response)
 
             if (response.statusCode === 200) {
                 setResults(response.data.items || []);
@@ -111,25 +110,17 @@ export default function HomeContainer() {
 
     return (
         <div className="min-h-screen bg-black text-white selection:bg-zinc-800 selection:text-zinc-200">
-            {/* 1. Navbar: Luôn cố định ở trên cùng */}
             {/* <Navbar /> */}
 
             <main className="max-w-6xl mx-auto px-6 pt-18 pb-16 flex flex-col items-center">
-
-                {/* 2. Hero Section: Tiêu đề lớn và lời giới thiệu */}
                 <Hero />
 
-                {/* 3. Search Bar: Trung tâm điều khiển */}
                 <SearchBar
                     onSearch={handleSearch}
                     onClear={handleClearSearch}
                     isSearching={loading}
                 />
 
-                {/* 4. Logic hiển thị có điều kiện:
-                    - Nếu KHÔNG search: Hiện Quotes -> Trending
-                    - Nếu ĐANG search: Hiện Search Results (Ẩn Quotes và Trending)
-                */}
                 {!isSearching ? (
                     <div className="w-full space-y-4 animate-fade-in">
                         <QuoteSection />
