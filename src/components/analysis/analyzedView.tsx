@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EB_Garamond, Lora } from "next/font/google";
+import { Lora } from "next/font/google";
 import Image from "next/image";
 
 /* Application Package */
@@ -18,13 +18,6 @@ interface AnalyzedViewProps {
     onRegenerate: () => void;
     isFromCache: boolean;
 }
-
-const ebGaramond = EB_Garamond({
-    subsets: ["latin", "vietnamese"],
-    weight: ["400", "500"],
-    style: ["italic"],
-    display: "swap"
-});
 
 const lora = Lora({
     subsets: ["latin", "vietnamese"],
@@ -210,7 +203,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                                             className="overflow-hidden"
                                         >
                                             <div className="bg-black/40 border border-white/5 p-6 rounded-2xl shadow-inner">
-                                                <p className={`whitespace-pre-line italic text-zinc-400 font-serif text-[18px] leading-loose tracking-wide ${ebGaramond.className}`}>
+                                                <p className={`whitespace-pre-line italic text-zinc-400 font-serif text-[18px] leading-loose tracking-wide ${lora.className}`}>
                                                     {item.lyricsQuote}
                                                 </p>
                                             </div>
