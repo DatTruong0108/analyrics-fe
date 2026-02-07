@@ -5,4 +5,5 @@ export interface ISongMetadata {
     album: string;
     imageUrl: string;
     spotifyUrl: string;
+    previewUrl: string | null;
 }
