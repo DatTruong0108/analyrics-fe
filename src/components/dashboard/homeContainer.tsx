@@ -79,6 +79,7 @@ export default function HomeContainer() {
                     artist: song.artist,
                     imageUrl: song.imageUrl,
                     spotifyUrl: song.spotifyUrl,
+                    previewUrl: song.previewUrl,
                     forceRefresh
                 }),
             });

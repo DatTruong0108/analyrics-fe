@@ -10,6 +10,7 @@ export interface IMetaphor {
 }
 
 export interface IAnalysisResult {
+    syncedLyrics: string | null;
     fullLyrics: string;
     vibe: string;
     overview: string;
