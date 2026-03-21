@@ -1,5 +1,5 @@
 /* System Package */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lora } from "next/font/google";
@@ -8,7 +8,7 @@ import Image from "next/image";
 /* Application Package */
 import FooterCredits from "./footerCredits";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
-import { IAnalysisResult } from "@/types/analysis/analysis.interface";
+import { IAnalysisResult, IAnalysisSection } from "@/types/analysis/analysis.interface";
 
 export type AnalysisWithSong = IAnalysisResult & { song: ISongMetadata };
 
@@ -29,11 +29,40 @@ const lora = Lora({
 export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }: AnalyzedViewProps) {
     const [openLyricsIndex, setOpenLyricsIndex] = useState<number | null>(null);
     const [isRotating, setIsRotating] = useState(false);
+    const [showSpotifyEmbed, setShowSpotifyEmbed] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const getSpotifyTrackId = (): string | null => {
+        // Prefer explicit spotifyUrl parsing; otherwise fallback to song.id.
+        // `song.id` should be a Spotify track id for your search results.
+        const idFromSong = data.song.id?.trim();
+        if (idFromSong) return idFromSong;
+
+        try {
+            const url = data.song.spotifyUrl;
+            if (!url) return null;
+            const match = url.match(/\/track\/([a-zA-Z0-9]+)/);
+            return match?.[1] ?? null;
+        } catch {
+            return null;
+        }
+    };
+
+    const spotifyTrackId = getSpotifyTrackId();
+    const spotifyEmbedUrl =
+        spotifyTrackId ? `https://open.spotify.com/embed/track/${spotifyTrackId}` : null;
 
     const handleRegenerate = () => {
         setIsRotating(true);
         onRegenerate();
     }
+
+    useEffect(() => {
+        if (!showSpotifyEmbed) return;
+        if (!audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+    }, [showSpotifyEmbed]);
 
     return (
         <div className="min-h-screen bg-transparent text-white pb-20 relative selection:bg-purple-500/30">
@@ -141,7 +170,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                         <Icon icon="ph:chat-circle-dots-bold" className="text-purple-400" /> Thông điệp cốt lõi
                     </h2>
                     <p className="text-sm md:text-lg italic font-light leading-relaxed text-zinc-100 relative z-10">
-                        "{data.coreMessage}"
+                        `{data.coreMessage}`
                     </p>
 
                     {isFromCache && (
@@ -179,7 +208,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                     </div>
 
                     <div className="space-y-6">
-                        {data.analysis.map((item: any, index: number) => (
+                        {data.analysis.map((item: IAnalysisSection, index: number) => (
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
@@ -224,10 +253,51 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                 <aside className="lg:col-span-4 space-y-10">
                     {/* Cột Lời bài hát đầy đủ */}
                     <div className="bg-zinc-900/50 backdrop-blur-md border border-white/5 rounded-3xl p-6 shadow-xl lyrics-container">
-                        <h3 className="text-lg font-bold mb-6 flex items-center gap-2 border-b border-white/5 pb-4">
-                            <Icon icon="ph:music-notes-simple-bold" className="text-zinc-500" /> Lời bài hát
-                        </h3>
-                        <div className="max-h-[500px] overflow-y-auto pr-3 lyrics-scrollbar">
+                        <div className="mb-6 flex items-center justify-between gap-3 border-b border-white/5 pb-4">
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                <Icon icon="ph:music-notes-simple-bold" className="text-zinc-500" /> Lời bài hát
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <motion.button
+                                    type="button"
+                                    onClick={() => setShowSpotifyEmbed((v) => !v)}
+                                    disabled={!spotifyEmbedUrl}
+                                    whileHover={spotifyEmbedUrl ? { y: -2, scale: 1.03 } : undefined}
+                                    whileTap={spotifyEmbedUrl ? { scale: 0.96, y: 0 } : undefined}
+                                    transition={{ type: "spring", stiffness: 380, damping: 24 }}
+                                    className="group relative overflow-hidden flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-zinc-200 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-[background-color,border-color,box-shadow,color] duration-300 hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-white hover:shadow-[0_14px_34px_rgba(16,185,129,0.18)] disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    <motion.span
+                                        animate={showSpotifyEmbed ? { rotate: 180, scale: 1.08 } : { rotate: 0, scale: 1 }}
+                                        transition={{ type: "spring", stiffness: 320, damping: 20 }}
+                                        className="relative z-10"
+                                    >
+                                        <Icon icon="ph:spotify-logo-fill" />
+                                    </motion.span>
+                                    <span className="absolute inset-0 bg-linear-to-r from-emerald-400/0 via-emerald-300/8 to-emerald-400/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                                    {showSpotifyEmbed ? "Ẩn" : "Play"}
+                                </motion.button>
+                            </div>
+                        </div>
+
+                        {showSpotifyEmbed && spotifyEmbedUrl && (
+                            <div className="mb-6">
+                                <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                                    <div className="aspect-video">
+                                        <iframe
+                                            src={spotifyEmbedUrl}
+                                            width="100%"
+                                            height="100%"
+                                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                            loading="lazy"
+                                            className="block"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="max-h-125 overflow-y-auto pr-3 lyrics-scrollbar">
                             <div className={`text-[17px] leading-relaxed tracking-wide text-zinc-300 ${lora.className}`}>
                                 {data.fullLyrics.split('\n').map((line, index) => (
                                     <p
@@ -250,11 +320,14 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                             {data.metaphors.map((meta: { phrase: string; meaning: string }, idx: number) => (
                                 <motion.div
                                     whileHover={{ x: 5 }}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.6 + idx * 0.1 }}
                                     key={idx}
                                     className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-2 hover:bg-white/10 transition-all"
                                 >
                                     <span className="text-[9px] uppercase font-black text-zinc-600 tracking-tighter">Keyword</span>
-                                    <h5 className="font-bold text-white text-lg leading-tight">"{meta.phrase}"</h5>
+                                    <h5 className="font-bold text-white text-lg leading-tight">{meta.phrase}</h5>
                                     <p className="text-sm text-zinc-400 leading-relaxed font-light">{meta.meaning}</p>
                                 </motion.div>
                             ))}
