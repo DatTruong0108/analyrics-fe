@@ -33,8 +33,6 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     const getSpotifyTrackId = (): string | null => {
-        // Prefer explicit spotifyUrl parsing; otherwise fallback to song.id.
-        // `song.id` should be a Spotify track id for your search results.
         const idFromSong = data.song.id?.trim();
         if (idFromSong) return idFromSong;
 
@@ -170,7 +168,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                         <Icon icon="ph:chat-circle-dots-bold" className="text-purple-400" /> Thông điệp cốt lõi
                     </h2>
                     <p className="text-sm md:text-lg italic font-light leading-relaxed text-zinc-100 relative z-10">
-                        `{data.coreMessage}`
+                        {data.coreMessage}
                     </p>
 
                     {isFromCache && (
@@ -299,7 +297,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
 
                         <div className="max-h-125 overflow-y-auto pr-3 lyrics-scrollbar">
                             <div className={`text-[17px] leading-relaxed tracking-wide text-zinc-300 ${lora.className}`}>
-                                {data.fullLyrics.split('\n').map((line, index) => (
+                                {data.fullLyrics?.split('\n').map((line, index) => (
                                     <p
                                         key={index}
                                         className="opacity-100 md:opacity-40 md:hover:opacity-100 md:hover:text-glow transition-all duration-500 cursor-default min-h-[1.6em]"
