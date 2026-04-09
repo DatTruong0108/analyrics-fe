@@ -170,7 +170,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                         <Icon icon="ph:chat-circle-dots-bold" className="text-purple-400" /> Thông điệp cốt lõi
                     </h2>
                     <p className="text-sm md:text-lg italic font-light leading-relaxed text-zinc-100 relative z-10">
-                        `{data.coreMessage}`
+                        {data.coreMessage}
                     </p>
 
                     {isFromCache && (
