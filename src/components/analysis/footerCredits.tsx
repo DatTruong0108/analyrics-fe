@@ -15,7 +15,7 @@ export default function FooterCredits() {
                     >
                         Connect with Owner (Dat Truong)
                     </a>
-
+                    {/* 
                     <span className="hidden md:inline text-zinc-800 select-none">•</span>
 
                     <a
@@ -25,7 +25,7 @@ export default function FooterCredits() {
                         className="text-zinc-500 hover:text-white underline decoration-zinc-800 hover:decoration-white underline-offset-4 transition-all duration-300"
                     >
                         Inspired by Vu Nguyen
-                    </a>
+                    </a> */}
                 </div>
             </div>
         </footer>

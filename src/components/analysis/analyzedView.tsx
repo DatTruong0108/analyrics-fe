@@ -29,12 +29,12 @@ const lora = Lora({
 export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }: AnalyzedViewProps) {
     const [openLyricsIndex, setOpenLyricsIndex] = useState<number | null>(null);
     const [isRotating, setIsRotating] = useState(false);
+    const [isPlayingPreview, setIsPlayingPreview] = useState(false);
     const [showSpotifyEmbed, setShowSpotifyEmbed] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const hasPreview = Boolean(data.song.previewUrl);
 
     const getSpotifyTrackId = (): string | null => {
-        // Prefer explicit spotifyUrl parsing; otherwise fallback to song.id.
-        // `song.id` should be a Spotify track id for your search results.
         const idFromSong = data.song.id?.trim();
         if (idFromSong) return idFromSong;
 
@@ -57,15 +57,56 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
         onRegenerate();
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const handleTogglePreview = async () => {
+        if (!audioRef.current || !hasPreview) return;
+
+        if (isPlayingPreview) {
+            audioRef.current.pause();
+            return;
+        }
+
+        try {
+            await audioRef.current.play();
+        } catch (error) {
+            setIsPlayingPreview(false);
+            console.error("Unable to play preview audio", error);
+        }
+    };
+
     useEffect(() => {
+        const audioElement = audioRef.current;
+        if (!audioElement) return;
+
+        const handlePlay = () => setIsPlayingPreview(true);
+        const handlePause = () => setIsPlayingPreview(false);
+        const handleEnded = () => setIsPlayingPreview(false);
+
+        audioElement.addEventListener("play", handlePlay);
+        audioElement.addEventListener("pause", handlePause);
+        audioElement.addEventListener("ended", handleEnded);
+
+        return () => {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            audioElement.removeEventListener("play", handlePlay);
+            audioElement.removeEventListener("pause", handlePause);
+            audioElement.removeEventListener("ended", handleEnded);
+        };
+    }, [data.song.previewUrl]);
+
+    useEffect(() => {
+        // When switching to full Spotify playback, stop the preview audio (if any).
         if (!showSpotifyEmbed) return;
         if (!audioRef.current) return;
         audioRef.current.pause();
+        // Reset position so the next preview play starts from the beginning.
         audioRef.current.currentTime = 0;
     }, [showSpotifyEmbed]);
 
     return (
         <div className="min-h-screen bg-transparent text-white pb-20 relative selection:bg-purple-500/30">
+            {hasPreview && <audio ref={audioRef} src={data.song.previewUrl ?? undefined} preload="none" />}
             <div className="fixed inset-0 -z-10 overflow-hidden background-img">
                 {data.song && (
                     <>
@@ -170,7 +211,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                         <Icon icon="ph:chat-circle-dots-bold" className="text-purple-400" /> Thông điệp cốt lõi
                     </h2>
                     <p className="text-sm md:text-lg italic font-light leading-relaxed text-zinc-100 relative z-10">
-                        {data.coreMessage}
+                        &quot;{data.coreMessage}&quot;
                     </p>
 
                     {isFromCache && (
@@ -258,25 +299,15 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                                 <Icon icon="ph:music-notes-simple-bold" className="text-zinc-500" /> Lời bài hát
                             </h3>
                             <div className="flex items-center gap-2">
-                                <motion.button
+                                <button
                                     type="button"
                                     onClick={() => setShowSpotifyEmbed((v) => !v)}
                                     disabled={!spotifyEmbedUrl}
-                                    whileHover={spotifyEmbedUrl ? { y: -2, scale: 1.03 } : undefined}
-                                    whileTap={spotifyEmbedUrl ? { scale: 0.96, y: 0 } : undefined}
-                                    transition={{ type: "spring", stiffness: 380, damping: 24 }}
-                                    className="group relative overflow-hidden flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-zinc-200 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-[background-color,border-color,box-shadow,color] duration-300 hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-white hover:shadow-[0_14px_34px_rgba(16,185,129,0.18)] disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-zinc-200 transition-all hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
-                                    <motion.span
-                                        animate={showSpotifyEmbed ? { rotate: 180, scale: 1.08 } : { rotate: 0, scale: 1 }}
-                                        transition={{ type: "spring", stiffness: 320, damping: 20 }}
-                                        className="relative z-10"
-                                    >
-                                        <Icon icon="ph:spotify-logo-fill" />
-                                    </motion.span>
-                                    <span className="absolute inset-0 bg-linear-to-r from-emerald-400/0 via-emerald-300/8 to-emerald-400/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                                    {showSpotifyEmbed ? "Ẩn" : "Play"}
-                                </motion.button>
+                                    <Icon icon="ph:spotify-logo-fill" />
+                                    {showSpotifyEmbed ? "Hide" : "Play"}
+                                </button>
                             </div>
                         </div>
 
@@ -297,7 +328,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                             </div>
                         )}
 
-                        <div className="max-h-125 overflow-y-auto pr-3 lyrics-scrollbar">
+                        <div className="max-h-[500px] overflow-y-auto pr-3 lyrics-scrollbar">
                             <div className={`text-[17px] leading-relaxed tracking-wide text-zinc-300 ${lora.className}`}>
                                 {data.fullLyrics.split('\n').map((line, index) => (
                                     <p
@@ -327,7 +358,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                                     className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-2 hover:bg-white/10 transition-all"
                                 >
                                     <span className="text-[9px] uppercase font-black text-zinc-600 tracking-tighter">Keyword</span>
-                                    <h5 className="font-bold text-white text-lg leading-tight">{meta.phrase}</h5>
+                                    <h5 className="font-bold text-white text-lg leading-tight">&quot;{meta.phrase}&quot;</h5>
                                     <p className="text-sm text-zinc-400 leading-relaxed font-light">{meta.meaning}</p>
                                 </motion.div>
                             ))}

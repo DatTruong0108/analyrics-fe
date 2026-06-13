@@ -124,7 +124,7 @@ export default function HomeContainer() {
 
                 {!isSearching ? (
                     <div className="w-full space-y-4 animate-fade-in">
-                        <QuoteSection />
+                        {/* <QuoteSection /> */}
 
                         <div className="w-full h-px bg-linear-gradient-to-r from-transparent via-zinc-900 to-transparent my-8" />
 
