@@ -142,7 +142,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
             </motion.button>
 
             {/* Header */}
-            <header className="pt-24 px-6 max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-10">
+            <header className="pt-24 px-6 max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center md:items-end gap-10">
                 <motion.div
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -328,7 +328,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                             </div>
                         )}
 
-                        <div className="max-h-[500px] overflow-y-auto pr-3 lyrics-scrollbar">
+                        <div className="max-h-125 overflow-y-auto pr-3 lyrics-scrollbar">
                             <div className={`text-[17px] leading-relaxed tracking-wide text-zinc-300 ${lora.className}`}>
                                 {data.fullLyrics.split('\n').map((line, index) => (
                                     <p
