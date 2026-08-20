@@ -142,7 +142,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
             </motion.button>
 
             {/* Header */}
-            <header className="pt-24 px-6 max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center md:items-end gap-10">
+            <header className="pt-24 px-6 max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-end gap-10">
                 <motion.div
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -153,7 +153,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                         }
                     }}
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                    className="relative w-64 h-64 md:w-72 md:h-72 rounded-4xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 shrink-0 cursor-pointer"
+                    className="relative w-64 h-64 md:w-72 md:h-72 self-center rounded-4xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 shrink-0 cursor-pointer"
                 >
                     <Image
                         src={data.song.imageUrl}
@@ -164,7 +164,7 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                     />
                 </motion.div>
 
-                <div className="flex-1 text-center md:text-left space-y-4">
+                <div className="flex-1 text-center self-center md:text-left space-y-4">
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                         <span className="text-[10px] md:text-xs uppercase font-black tracking-[0.2em] text-white/50 select-none">
                             Vibe:
