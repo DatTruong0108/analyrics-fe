@@ -1,12 +1,13 @@
 'use client';
 
 /* System Package */
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 /* Application Package */
 import SongCard from "./songCard";
 import SongCardSkeleton from "./songCardSkeleton";
+import { apiFetch } from "@/lib/api";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 import { EASE_OUT, fadeInUp, gridItemTransition, staggerContainer } from "@/lib/motion";
 
@@ -14,39 +15,41 @@ interface TrendingSectionProps {
     onSongClick: (song: ISongMetadata) => void;
 }
 
+const LIMIT = 6;
+
 export default function TrendingSection({ onSongClick }: TrendingSectionProps) {
     const [songs, setSongs] = useState<ISongMetadata[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [offset, setOffset] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
-    const LIMIT = 6;
+    const [loading, setLoading] = useState<boolean>(true);
+    const [offset, setOffset] = useState<number>(0);
+    const [hasMore, setHasMore] = useState<boolean>(true);
 
     const fetchTrending = async (currentOffset: number) => {
         try {
             setLoading(true);
-            const baseUrl = process.env.NODE_ENV === "development"
-                ? process.env.NEXT_PUBLIC_API_URL
-                : process.env.NEXT_PUBLIC_API_PROD;
-            const response = await fetch(`${baseUrl}/analysis/trending?limit=${LIMIT}&offset=${currentOffset}`);
 
-            if (response.status !== 200) {
-                setHasMore(false);
-                setSongs([]);
-                return;
-            }
+            const response = await apiFetch<ISongMetadata[]>(
+                `/analysis/trending?limit=${LIMIT}&offset=${currentOffset}`,
+            );
 
-            const result = await response.json();
             if (currentOffset === 0) {
-                setSongs(result.data);
+                setSongs(response.data);
             } else {
-                setSongs((prevSongs) => [...prevSongs, ...result.data]);
+                setSongs((prevSongs) => [...prevSongs, ...response.data]);
             }
 
-            setHasMore(result.hasMore);
+            setHasMore(response.hasMore ?? false);
         } catch (error) {
             console.error("Lỗi lấy dữ liệu trending", error);
             setHasMore(false);
-            setSongs([]);
+
+            /*
+             * Only the first page may clear the grid. A failed "load more" must
+             * leave the pages already on screen alone — wiping them would throw
+             * away results the user is reading because page N+1 failed.
+             */
+            if (currentOffset === 0) {
+                setSongs([]);
+            }
         } finally {
             setLoading(false);
         }
@@ -117,19 +120,28 @@ export default function TrendingSection({ onSongClick }: TrendingSectionProps) {
                 <div className="flex justify-center mt-12">
                     <motion.button
                         onClick={() => {
+                            /*
+                             * `disabled` already blocks the pointer, but a
+                             * keyboard-driven or synthetic click would still
+                             * double-advance `offset` and skip a whole page.
+                             */
+                            if (loading) return;
+
                             const nextOffset = offset + LIMIT;
                             setOffset(nextOffset);
                             fetchTrending(nextOffset);
                         }}
+                        disabled={loading}
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.95 }}
+                        /* No hover/tap feedback while disabled — it would imply the button still responds. */
+                        whileHover={loading ? undefined : { scale: 1.04 }}
+                        whileTap={loading ? undefined : { scale: 0.95 }}
                         transition={{ duration: 0.25, ease: EASE_OUT }}
-                        className="px-10 py-3 bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-xl text-sm font-bold hover:bg-zinc-800 hover:text-white transition-colors"
+                        className="px-10 py-3 bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-xl text-sm font-bold transition-colors enabled:hover:bg-zinc-800 enabled:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Tải thêm
+                        {loading ? "Đang tải..." : "Tải thêm"}
                     </motion.button>
                 </div>
             )}
