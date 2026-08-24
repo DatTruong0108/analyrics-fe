@@ -1,11 +1,13 @@
 'use client';
 
 /* System Package */
-import { useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 /* Application Package */
 import { EASE_OUT, growLineX } from "@/lib/motion";
+import { ApiError, NETWORK_ERROR_STATUS, apiFetch, isAbortError } from "@/lib/api";
+import { IPaginatedResult } from "@/types/baseApiResponse";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 import { AnalysisWithSong } from "../analysis/analyzedView";
 import Navbar from "./navBar";
@@ -18,45 +20,66 @@ import AnalyzedView from "../analysis/analyzedView";
 import LoadingView from "../analysis/loadingView";
 import ErrorView from "../analysis/errorView";
 
+type AnalysisResponse = AnalysisWithSong & { fromCache: boolean };
+
 export default function HomeContainer() {
     const [view, setView] = useState<'dashboard' | 'loading' | 'analysis' | 'error'>('dashboard');
-    const [isSearching, setIsSearching] = useState(false);
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [isSearching, setIsSearching] = useState<boolean>(false);
+    const [results, setResults] = useState<ISongMetadata[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
     const [analysisData, setAnalysisData] = useState<AnalysisWithSong | null>(null);
     const [errorStatus, setErrorStatus] = useState<number>(200);
-    const [isFromCache, setIsFromCache] = useState(false);
+    const [isFromCache, setIsFromCache] = useState<boolean>(false);
+
+    /* Holds the in-flight search so a newer query can cancel it. */
+    const searchAbortRef = useRef<AbortController | null>(null);
 
     const handleSearch = async (query: string) => {
         if (!query.trim()) return;
 
+        /*
+         * Cancel whatever is in flight. Without this, two searches race and
+         * the slower response wins whenever it lands second — so typing
+         * "abba" then "queen" could leave Abba's results on screen.
+         */
+        searchAbortRef.current?.abort();
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+
         setIsSearching(true);
         setLoading(true);
 
-        const baseUrl = process.env.NODE_ENV === "development"
-            ? process.env.NEXT_PUBLIC_API_URL
-            : process.env.NEXT_PUBLIC_API_PROD;
-
         try {
-            const res = await fetch(`${baseUrl}/analysis/search?q=${query}`);
+            const response = await apiFetch<IPaginatedResult<ISongMetadata>>(
+                `/analysis/search?q=${encodeURIComponent(query)}`,
+                { signal: controller.signal },
+            );
 
-            const response = await res.json();
-
-            if (response.statusCode === 200) {
-                setResults(response.data.items || []);
-            } else {
-                setResults([]);
-            }
+            setResults(response.data.items ?? []);
         } catch (error) {
+            /* We cancelled it ourselves — the newer search owns the UI now. */
+            if (isAbortError(error)) return;
+
             console.error("Lỗi khi tìm kiếm", error);
             setResults([]);
         } finally {
-            setLoading(false);
+            /*
+             * Only the newest request may clear the spinner; a superseded one
+             * reaching here would otherwise stop the spinner mid-search.
+             */
+            if (searchAbortRef.current === controller) {
+                setLoading(false);
+            }
         }
     }
 
     const handleClearSearch = () => {
+        /* Nothing on screen will consume the pending response any more. */
+        searchAbortRef.current?.abort();
+        searchAbortRef.current = null;
+
         setIsSearching(false);
+        setLoading(false);
         setResults([]);
     };
 
@@ -64,12 +87,8 @@ export default function HomeContainer() {
         if (!song) return;
         setView('loading');
 
-        const baseUrl = process.env.NODE_ENV === "development"
-            ? process.env.NEXT_PUBLIC_API_URL
-            : process.env.NEXT_PUBLIC_API_PROD;
-
         try {
-            const res = await fetch(`${baseUrl}/analysis/analyze`, {
+            const response = await apiFetch<AnalysisResponse>(`/analysis/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,18 +105,21 @@ export default function HomeContainer() {
                 }),
             });
 
-            const response = await res.json();
-
-            if (response.statusCode === 200) {
-                setAnalysisData(response.data);
-                setIsFromCache(response.data.fromCache || false);
-                setView('analysis');
-            } else {
-                setErrorStatus(response.statusCode);
-                setView('error');
-            }
+            setAnalysisData(response.data);
+            setIsFromCache(response.data.fromCache || false);
+            setView('analysis');
         } catch (error) {
-            setErrorStatus(500);
+            /*
+             * ErrorView only splits "server side, come back later" (500) from
+             * "this song failed, try another". A transport failure is the
+             * former, so a dead backend must not surface as 0 — that would
+             * render the "try another song" copy for an outage.
+             */
+            const isServerSide =
+                !(error instanceof ApiError) ||
+                error.statusCode === NETWORK_ERROR_STATUS;
+
+            setErrorStatus(isServerSide ? 500 : (error as ApiError).statusCode);
             setView('error');
         }
     }
