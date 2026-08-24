@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { EASE_OUT } from "@/lib/motion";
 
 export default function Navbar() {
-    const user = { name: "User" };
+    const user = { name: "Khách" };
 
     return (
         <motion.nav
