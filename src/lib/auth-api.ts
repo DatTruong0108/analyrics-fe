@@ -21,7 +21,7 @@ import {
  */
 interface IAuthSessionBody {
     user: IAuthUser | null;
-    accessTokenExpiresAt?: string | null;
+    accessTokenExpiresAt?: number | string | null;
 }
 
 type AuthSessionBody = IAuthSessionBody | IAuthUser;

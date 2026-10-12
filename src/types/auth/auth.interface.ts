@@ -20,13 +20,13 @@ export interface IAuthUser {
  * guest instead of 401 — bootstrapping therefore does not have to treat "not
  * signed in" as an error.
  *
- * `accessTokenExpiresAt` is an ISO string and may be absent: it is what the
- * silent-refresh timer schedules against, and a session restored without it
- * simply gets no timer rather than a bogus one.
+ * `accessTokenExpiresAt` is an epoch milliseconds number (or ISO string) and
+ * may be absent: it is what the silent-refresh timer schedules against, and a
+ * session restored without it simply gets no timer rather than a bogus one.
  */
 export interface IAuthSession {
     user: IAuthUser | null;
-    accessTokenExpiresAt: string | null;
+    accessTokenExpiresAt: number | string | null;
 }
 
 /* Mirrors the backend `LoginDto`. */
