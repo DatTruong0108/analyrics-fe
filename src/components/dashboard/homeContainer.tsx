@@ -136,7 +136,7 @@ export default function HomeContainer() {
 
         return (
             <div className="min-h-screen bg-black text-white selection:bg-zinc-800 selection:text-zinc-200">
-                {/* <Navbar /> */}
+                <Navbar />
 
                 <main className="max-w-6xl mx-auto px-6 pt-18 pb-16 flex flex-col items-center">
                     <Hero />

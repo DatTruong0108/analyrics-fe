@@ -2,6 +2,7 @@
 
 /* System Package */
 import { Icon } from "@iconify/react";
+import Image from "next/image";
 
 /* Application Package */
 import { ISongMetadata } from "@/types/dashboard/song.interface";
@@ -18,11 +19,13 @@ export default function SongCard({ song }: { song: ISongMetadata }) {
 
                 <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 shadow-lg 
                         group-hover:shadow-2xl group-hover:shadow-purple-500/30 transition-all duration-500 shimmer-effect">
-                    <img
+                    <Image
                         alt={song.title}
                         src={song.imageUrl || "https://placehold.co/400x400/1a1a1a/FFF?text=Music"}
+                        fill
+                        sizes="80px"
                         loading="lazy"
-                        className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700 song-img"
+                        className="object-cover group-hover:scale-110 transition-transform duration-700 song-img"
                     />
                 </div>
 

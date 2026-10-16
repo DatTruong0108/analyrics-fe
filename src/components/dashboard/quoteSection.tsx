@@ -1,7 +1,7 @@
 'use client';
 
 /* System Package */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -9,23 +9,56 @@ import { AnimatePresence, motion } from "framer-motion";
 import quotesData from "@/data/quotes.json";
 import { EASE_OUT, fadeInUp, staggerContainer } from "@/lib/motion";
 
+/*
+ * The quote is chosen at random, so the server and the client can never agree
+ * on one. Rather than render a quote during SSR and correct it afterwards —
+ * which React reports as a hydration mismatch — this section renders nothing
+ * until it has hydrated, then reveals a client-chosen quote.
+ *
+ * `useSyncExternalStore` is the hook that expresses exactly that: React must
+ * use `getServerSnapshot` for both the SSR pass and the hydration pass, then
+ * re-render with `getSnapshot`. Doing the same job with `useEffect` +
+ * `setState` is the cascading-render pattern that `react-hooks/set-state-in-effect`
+ * forbids, so the subscription is deliberate rather than a workaround.
+ *
+ * All three callbacks live at module scope so their identity is stable; passing
+ * inline arrows would resubscribe on every render.
+ */
+const subscribeToNothing = () => () => { };
+const getIsHydrated = () => true;
+const getIsHydratedOnServer = () => false;
+
+/** Index of a quote other than `current`, so shuffling always visibly changes something. */
+function pickOtherQuoteIndex(current: number): number {
+    if (quotesData.length < 2) return current;
+
+    /*
+     * Draw from the shortened range and skip over `current`, instead of
+     * re-rolling until the value differs — this always terminates.
+     */
+    const drawn = Math.floor(Math.random() * (quotesData.length - 1));
+    return drawn >= current ? drawn + 1 : drawn;
+}
+
 export default function QuoteSection() {
-    const [quote, setQuote] = useState({
-        text: "",
-        author: "",
-        source: "",
-    });
+    const isHydrated = useSyncExternalStore(
+        subscribeToNothing,
+        getIsHydrated,
+        getIsHydratedOnServer,
+    );
 
-    const getRandomQuote = useCallback(() => {
-        const randomIndex = Math.floor(Math.random() * quotesData.length);
-        setQuote(quotesData[randomIndex]);
-    }, []);
+    /*
+     * Lazy initialiser: one quote is picked per mount rather than per render.
+     * It also runs during the server pass, but that value is never rendered
+     * because `isHydrated` is false there.
+     */
+    const [index, setIndex] = useState(() =>
+        Math.floor(Math.random() * quotesData.length),
+    );
 
-    useEffect(() => {
-        getRandomQuote();
-    }, [getRandomQuote]);
+    const quote = quotesData[index];
 
-    if (!quote.text) return null;
+    if (!isHydrated || !quote) return null;
 
     return (
         <motion.div
@@ -64,7 +97,7 @@ export default function QuoteSection() {
                             <span className="font-medium opacity-60">{quote.source}</span>
                         </p>
                         <motion.button
-                            onClick={getRandomQuote}
+                            onClick={() => setIndex(pickOtherQuoteIndex)}
                             title="Đổi câu khác"
                             whileHover={{ scale: 1.15 }}
                             whileTap={{ scale: 0.9, rotate: 180 }}
