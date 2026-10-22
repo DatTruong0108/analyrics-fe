@@ -1,12 +1,13 @@
 'use client';
 
 /* System Package */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 /* Application Package */
 import { EASE_OUT, growLineX } from "@/lib/motion";
 import { ApiError, NETWORK_ERROR_STATUS, apiFetch, isAbortError } from "@/lib/api";
+import { consumePendingAnalysis } from "@/lib/pending-analysis";
 import { IPaginatedResult } from "@/types/baseApiResponse";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 import { AnalysisWithSong } from "../analysis/analyzedView";
@@ -123,6 +124,16 @@ export default function HomeContainer() {
             setView('error');
         }
     }
+
+    /*
+     * A song picked on `/me` arrives through sessionStorage, since the analysis
+     * view has no URL of its own. Read once on mount: the read also clears it,
+     * so StrictMode's second mount and any later reload find nothing to replay.
+     */
+    useEffect(() => {
+        const pendingSong = consumePendingAnalysis();
+        if (pendingSong) void handleAnalyze(pendingSong);
+    }, []);
 
     const handleBackToDashboard = () => {
         setView('dashboard');
