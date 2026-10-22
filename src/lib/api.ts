@@ -23,11 +23,18 @@ export const NETWORK_ERROR_STATUS = 0;
  */
 export class ApiError extends Error {
     readonly statusCode: number;
+    /*
+     * Mirrors `data.retryable` on an error body — today only `/auth/refresh`
+     * sends it, to tell a transient failure (DB hiccup, lost multi-tab race)
+     * apart from "you are signed out". False whenever the server didn't say.
+     */
+    readonly isRetryable: boolean;
 
-    constructor(statusCode: number, message: string) {
+    constructor(statusCode: number, message: string, isRetryable = false) {
         super(message);
         this.name = "ApiError";
         this.statusCode = statusCode;
+        this.isRetryable = isRetryable;
     }
 }
 
@@ -116,9 +123,12 @@ async function request<T>(
 
     /* HTTP status wins: it is the one field every responder sets. */
     if (!res.ok) {
+        const errorData = envelope?.data as { retryable?: unknown } | null | undefined;
+
         throw new ApiError(
             envelope?.statusCode ?? res.status,
             envelope?.message ?? FALLBACK_ERROR_MESSAGE,
+            errorData?.retryable === true,
         );
     }
 
