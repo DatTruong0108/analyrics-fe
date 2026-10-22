@@ -102,22 +102,31 @@ export function fetchSession(): Promise<IAuthSession> {
 }
 
 /*
- * Delays before each retry of a refresh the server marked `retryable`. Three
- * attempts over ~3s ride out a cold database start or a lost multi-tab race;
- * past that the failure is treated as real.
+ * Delays before each retry of a refresh that failed server-side. Three attempts
+ * over ~3s ride out a cold database start; past that the failure is real.
  */
 const REFRESH_RETRY_DELAYS_MS = [1_000, 2_000];
+
+/* How long a race loser waits for the winner's Set-Cookie before re-reading the session. */
+const RACE_SETTLE_MS = 1_000;
 
 function wait(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /*
- * One rotation, retried only when the server says the failure was transient.
- * Without this, a 500 from a sleeping database (cookies untouched, session
- * perfectly valid) dropped the user to guest until they reloaded the page.
- * A retry after a lost race also works: the winner has already set the new
- * cookie, so the second attempt presents the fresh token.
+ * One rotation, recovering from the two `retryable` failures differently.
+ *
+ * 5xx (`SYSTEM`): the claim never committed, so the cookie still holds a live
+ * token and re-presenting it is safe. Without this, a sleeping database dropped
+ * a perfectly valid session to guest.
+ *
+ * 401 + retryable (`RACE`): another request already rotated this token. Never
+ * re-send the refresh cookie here. If the winner's response was lost (page
+ * reload, aborted fetch), the cookie still holds the OLD token, the grace slot
+ * is already spent, and a second presentation is indistinguishable from theft:
+ * the server revokes the whole family. Instead, give the winner's Set-Cookie a
+ * moment to land and re-read the session, which consumes no refresh token.
  */
 async function rotateWithRetry(): Promise<IAuthSession> {
     for (let attempt = 0; ; attempt++) {
@@ -131,9 +140,15 @@ async function rotateWithRetry(): Promise<IAuthSession> {
             });
             return toSession(response.data);
         } catch (error) {
+            if (!(error instanceof ApiError) || !error.isRetryable) throw error;
+
+            if (error.statusCode < 500) {
+                await wait(RACE_SETTLE_MS);
+                return fetchSession();
+            }
+
             const delay = REFRESH_RETRY_DELAYS_MS[attempt];
-            const isRetryable = error instanceof ApiError && error.isRetryable;
-            if (!isRetryable || delay === undefined) throw error;
+            if (delay === undefined) throw error;
 
             await wait(delay);
         }
