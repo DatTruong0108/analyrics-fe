@@ -50,14 +50,27 @@ export function isAbortError(error: unknown): boolean {
 }
 
 /*
- * Single entry point for every backend call.
- *
- * Resolves with the full envelope (callers need `hasMore` alongside `data`).
- * Throws `ApiError` on any failure, and rethrows `AbortError` untouched.
+ * The envelope of an endpoint that legitimately answers 200 with no payload —
+ * `/auth/logout` is the only one today. Deliberately narrower than
+ * `IBaseApiResponse<T>`: there is no `data` to expose, so no caller can reach
+ * for one.
  */
-export async function apiFetch<T>(
+export interface IApiVoidResponse {
+    statusCode: number;
+    message: string;
+}
+
+/*
+ * The shared request body behind `apiFetch` and `apiFetchVoid`.
+ *
+ * `requireData` is the only difference between them: everything up to and
+ * including the `statusCode` range check is identical for both, and only the
+ * final payload guard is conditional.
+ */
+async function request<T>(
     path: string,
-    init: RequestInit = {},
+    init: RequestInit,
+    requireData: boolean,
 ): Promise<IBaseApiResponse<T>> {
     if (!API_BASE_URL) {
         throw new ApiError(
@@ -126,12 +139,39 @@ export async function apiFetch<T>(
      * an envelope whose type lies — a success body with no `data` would
      * otherwise reach the UI as `undefined` and crash on first use.
      *
-     * An endpoint that legitimately answers 200 with no payload needs its own
-     * helper rather than a loosening of this check.
+     * Data-less endpoints opt out via `apiFetchVoid`, whose return type has no
+     * `data` at all. This check itself must not be loosened.
      */
-    if (envelope.data === undefined || envelope.data === null) {
+    if (requireData && (envelope.data === undefined || envelope.data === null)) {
         throw new ApiError(envelope.statusCode, FALLBACK_ERROR_MESSAGE);
     }
 
     return envelope as IBaseApiResponse<T>;
+}
+
+/*
+ * Single entry point for every backend call that returns a payload.
+ *
+ * Resolves with the full envelope (callers need `hasMore` alongside `data`).
+ * Throws `ApiError` on any failure, and rethrows `AbortError` untouched.
+ */
+export function apiFetch<T>(
+    path: string,
+    init: RequestInit = {},
+): Promise<IBaseApiResponse<T>> {
+    return request<T>(path, init, true);
+}
+
+/*
+ * Sibling of `apiFetch` for endpoints whose success body carries no `data`.
+ *
+ * Same transport, same error mapping — it only skips the payload guard. The
+ * declared return type drops `data`, so the runtime absence of a payload can
+ * never surprise a caller.
+ */
+export function apiFetchVoid(
+    path: string,
+    init: RequestInit = {},
+): Promise<IApiVoidResponse> {
+    return request<never>(path, init, false);
 }
