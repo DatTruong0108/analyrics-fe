@@ -1,5 +1,5 @@
 /* Application Package */
-import { apiFetch, apiFetchVoid } from "@/lib/api";
+import { ApiError, apiFetch, apiFetchVoid } from "@/lib/api";
 import {
     IAuthSession,
     IAuthUser,
@@ -101,17 +101,54 @@ export function fetchSession(): Promise<IAuthSession> {
     );
 }
 
-/* Rotates the refresh token, coalescing concurrent callers onto one request. */
+/*
+ * Delays before each retry of a refresh the server marked `retryable`. Three
+ * attempts over ~3s ride out a cold database start or a lost multi-tab race;
+ * past that the failure is treated as real.
+ */
+const REFRESH_RETRY_DELAYS_MS = [1_000, 2_000];
+
+function wait(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/*
+ * One rotation, retried only when the server says the failure was transient.
+ * Without this, a 500 from a sleeping database (cookies untouched, session
+ * perfectly valid) dropped the user to guest until they reloaded the page.
+ * A retry after a lost race also works: the winner has already set the new
+ * cookie, so the second attempt presents the fresh token.
+ */
+async function rotateWithRetry(): Promise<IAuthSession> {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            /*
+             * No request body: the credential is the httpOnly `refresh_token`
+             * cookie, which `apiFetch` already sends via `credentials: "include"`.
+             */
+            const response = await apiFetch<AuthSessionBody>("/auth/refresh", {
+                method: "POST",
+            });
+            return toSession(response.data);
+        } catch (error) {
+            const delay = REFRESH_RETRY_DELAYS_MS[attempt];
+            const isRetryable = error instanceof ApiError && error.isRetryable;
+            if (!isRetryable || delay === undefined) throw error;
+
+            await wait(delay);
+        }
+    }
+}
+
+/*
+ * Rotates the refresh token, coalescing concurrent callers onto one request.
+ * Retries happen inside the shared promise, so coalesced callers wait for the
+ * final outcome instead of each starting their own retry loop.
+ */
 export function refreshSession(): Promise<IAuthSession> {
     if (inFlightRefresh) return inFlightRefresh;
 
-    /*
-     * No request body: the credential is the httpOnly `refresh_token` cookie,
-     * which `apiFetch` already sends via `credentials: "include"`.
-     */
-    const rotation = apiFetch<AuthSessionBody>("/auth/refresh", {
-        method: "POST",
-    }).then((response) => toSession(response.data));
+    const rotation = rotateWithRetry();
 
     inFlightRefresh = rotation;
 
