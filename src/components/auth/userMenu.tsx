@@ -2,6 +2,7 @@
 
 /* System Package */
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -104,9 +105,23 @@ export default function UserMenu() {
                         exit="exit"
                         className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl bg-zinc-900/95 border border-white/10 p-2 shadow-2xl backdrop-blur-xl z-50 outline-none"
                     >
-                        <div className="px-3 py-2 border-b border-zinc-800/80 mb-1">
-                            <p className="text-xs font-semibold text-white truncate">{user.name}</p>
-                            <p className="text-[11px] text-zinc-400 truncate mt-0.5">{user.email}</p>
+                        <div className="pb-1 mb-1 border-b border-zinc-800/80">
+                            <Link
+                                href="/me"
+                                role="menuitem"
+                                onClick={() => setIsOpen(false)}
+                                className="group flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 focus-visible:bg-white/5 outline-none transition-colors"
+                            >
+                                <span className="flex-1 min-w-0">
+                                    <span className="block text-xs font-semibold text-white truncate">{user.name}</span>
+                                    <span className="block text-[11px] text-zinc-400 truncate mt-0.5">{user.email}</span>
+                                </span>
+                                <Icon
+                                    icon="ph:caret-right-bold"
+                                    aria-hidden="true"
+                                    className="w-3.5 h-3.5 shrink-0 text-zinc-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-200"
+                                />
+                            </Link>
                         </div>
 
                         <button

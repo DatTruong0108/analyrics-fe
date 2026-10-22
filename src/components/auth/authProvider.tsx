@@ -33,6 +33,8 @@ export interface IAuthContext {
     signIn: (payload: ILoginPayload) => Promise<void>;
     signUp: (payload: IRegisterPayload) => Promise<void>;
     signOut: () => Promise<void>;
+    /* Replaces the cached user after a profile edit, so the navbar updates without a refetch. */
+    updateUser: (nextUser: IAuthUser) => void;
 }
 
 export interface IAuthProviderProps {
@@ -239,6 +241,15 @@ export function AuthProvider({ children }: IAuthProviderProps) {
         }
     }, [clearTimer, updateStatus]);
 
+    const updateUser = useCallback((nextUser: IAuthUser): void => {
+        /*
+         * A rename that resolves after the user signed out must not quietly
+         * sign them back in on screen.
+         */
+        if (statusRef.current !== "authenticated") return;
+        setUser(nextUser);
+    }, []);
+
     const value = useMemo<IAuthContext>(
         () => ({
             user,
@@ -246,8 +257,9 @@ export function AuthProvider({ children }: IAuthProviderProps) {
             signIn,
             signUp,
             signOut,
+            updateUser,
         }),
-        [user, status, signIn, signUp, signOut],
+        [user, status, signIn, signUp, signOut, updateUser],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
