@@ -21,7 +21,7 @@ import AnalyzedView from "../analysis/analyzedView";
 import LoadingView from "../analysis/loadingView";
 import ErrorView from "../analysis/errorView";
 
-type AnalysisResponse = AnalysisWithSong & { fromCache: boolean };
+type AnalysisResponse = AnalysisWithSong & { fromCache: boolean; isFavorited: boolean };
 
 export default function HomeContainer() {
     const [view, setView] = useState<'dashboard' | 'loading' | 'analysis' | 'error'>('dashboard');
@@ -31,6 +31,7 @@ export default function HomeContainer() {
     const [analysisData, setAnalysisData] = useState<AnalysisWithSong | null>(null);
     const [errorStatus, setErrorStatus] = useState<number>(200);
     const [isFromCache, setIsFromCache] = useState<boolean>(false);
+    const [isFavorited, setIsFavorited] = useState<boolean>(false);
 
     /* Holds the in-flight search so a newer query can cancel it. */
     const searchAbortRef = useRef<AbortController | null>(null);
@@ -108,6 +109,7 @@ export default function HomeContainer() {
 
             setAnalysisData(response.data);
             setIsFromCache(response.data.fromCache || false);
+            setIsFavorited(response.data.isFavorited === true);
             setView('analysis');
         } catch (error) {
             /*
@@ -143,7 +145,7 @@ export default function HomeContainer() {
     const renderView = () => {
         if (view === 'loading') return <LoadingView />;
         if (view === 'error') return <ErrorView status={errorStatus} onBack={handleBackToDashboard} />;
-        if (view === 'analysis' && analysisData) return <AnalyzedView data={analysisData} onBack={handleBackToDashboard} isFromCache={isFromCache} onRegenerate={() => handleAnalyze(analysisData.song, true)} />;
+        if (view === 'analysis' && analysisData) return <AnalyzedView data={analysisData} onBack={handleBackToDashboard} isFromCache={isFromCache} isFavorited={isFavorited} onRegenerate={() => handleAnalyze(analysisData.song, true)} />;
 
         return (
             <div className="min-h-screen bg-black text-white selection:bg-zinc-800 selection:text-zinc-200">

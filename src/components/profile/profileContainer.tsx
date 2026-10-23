@@ -1,6 +1,7 @@
 'use client';
 
 /* System Package */
+import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
@@ -11,11 +12,14 @@ import Navbar from "@/components/dashboard/navBar";
 import { fadeInUp, staggerContainer } from "@/lib/motion";
 import ProfileHeader from "./profileHeader";
 import HistorySection from "./historySection";
+import FavoritesSection from "./favoritesSection";
+import ProfileTabs, { ProfileTab, profilePanelId, profileTabId } from "./profileTabs";
 import ProfileSkeleton from "./profileSkeleton";
 import GuestPrompt from "./guestPrompt";
 
 export default function ProfileContainer() {
     const { user, status } = useAuth();
+    const [activeTab, setActiveTab] = useState<ProfileTab>("history");
 
     /* "authenticated" without a user cannot happen, but it must never render a blank page. */
     const view = status === "loading" ? "loading" : user ? "profile" : "guest";
@@ -67,9 +71,36 @@ export default function ProfileContainer() {
                                         <ProfileHeader user={user} />
                                     </motion.div>
 
-                                    <motion.div variants={fadeInUp}>
-                                        {/* Remounts on account switch so one user's history never shows under another. */}
-                                        <HistorySection key={user.id} />
+                                    <motion.div variants={fadeInUp} className="space-y-8">
+                                        <ProfileTabs activeTab={activeTab} onChange={setActiveTab} />
+
+                                        {/*
+                                            Only the active panel is mounted, so switching tabs refetches
+                                            it — a song favourited or viewed meanwhile shows up. Each
+                                            section is keyed by user so one account's list never shows
+                                            under another.
+                                        */}
+                                        <div
+                                            role="tabpanel"
+                                            id={profilePanelId(activeTab)}
+                                            aria-labelledby={profileTabId(activeTab)}
+                                        >
+                                            <AnimatePresence mode="wait" initial={false}>
+                                                <motion.div
+                                                    key={activeTab}
+                                                    initial={{ opacity: 0, y: 8 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ duration: 0.2, ease: "easeOut" }}
+                                                >
+                                                    {activeTab === "history" ? (
+                                                        <HistorySection key={user.id} />
+                                                    ) : (
+                                                        <FavoritesSection key={user.id} />
+                                                    )}
+                                                </motion.div>
+                                            </AnimatePresence>
+                                        </div>
                                     </motion.div>
                                 </motion.div>
                             )}

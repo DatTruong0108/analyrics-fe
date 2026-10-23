@@ -7,6 +7,7 @@ import Image from "next/image";
 
 /* Application Package */
 import FooterCredits from "./footerCredits";
+import FavoriteButton from "./favoriteButton";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 import { IAnalysisResult, IAnalysisSection } from "@/types/analysis/analysis.interface";
 
@@ -17,6 +18,7 @@ interface AnalyzedViewProps {
     onBack: () => void;
     onRegenerate: () => void;
     isFromCache: boolean;
+    isFavorited: boolean;
 }
 
 const lora = Lora({
@@ -26,7 +28,7 @@ const lora = Lora({
     display: "swap"
 });
 
-export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }: AnalyzedViewProps) {
+export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache, isFavorited }: AnalyzedViewProps) {
     const [openLyricsIndex, setOpenLyricsIndex] = useState<number | null>(null);
     const [isRotating, setIsRotating] = useState(false);
     const [isPlayingPreview, setIsPlayingPreview] = useState(false);
@@ -195,6 +197,12 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache }
                     >
                         {data.song.artist}
                     </motion.p>
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+                    >
+                        {/* Keyed by song so a different song never inherits the previous heart state. */}
+                        <FavoriteButton key={data.song.id} songId={data.song.id} initialIsFavorited={isFavorited} />
+                    </motion.div>
                 </div>
             </header>
 
