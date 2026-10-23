@@ -1,37 +1,32 @@
 'use client';
 
 /* System Package */
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 /* Application Package */
 import { EASE_OUT, growLineX } from "@/lib/motion";
 import { ApiError, NETWORK_ERROR_STATUS, apiFetch, isAbortError } from "@/lib/api";
-import { consumePendingAnalysis } from "@/lib/pending-analysis";
+import { analyzeSong } from "@/lib/analysis-api";
 import { IPaginatedResult } from "@/types/baseApiResponse";
 import { ISongMetadata } from "@/types/dashboard/song.interface";
-import { AnalysisWithSong } from "../analysis/analyzedView";
 import Navbar from "./navBar";
 import Hero from "./hero";
 import QuoteSection from "./quoteSection";
 import SearchBar from "./searchBar";
 import TrendingSection from "./trendingSection";
 import SearchResults from "./searchResult";
-import AnalyzedView from "../analysis/analyzedView";
 import LoadingView from "../analysis/loadingView";
 import ErrorView from "../analysis/errorView";
 
-type AnalysisResponse = AnalysisWithSong & { fromCache: boolean; isFavorited: boolean };
-
 export default function HomeContainer() {
-    const [view, setView] = useState<'dashboard' | 'loading' | 'analysis' | 'error'>('dashboard');
+    const router = useRouter();
+    const [view, setView] = useState<'dashboard' | 'loading' | 'error'>('dashboard');
     const [isSearching, setIsSearching] = useState<boolean>(false);
     const [results, setResults] = useState<ISongMetadata[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
-    const [analysisData, setAnalysisData] = useState<AnalysisWithSong | null>(null);
     const [errorStatus, setErrorStatus] = useState<number>(200);
-    const [isFromCache, setIsFromCache] = useState<boolean>(false);
-    const [isFavorited, setIsFavorited] = useState<boolean>(false);
 
     /* Holds the in-flight search so a newer query can cancel it. */
     const searchAbortRef = useRef<AbortController | null>(null);
@@ -85,32 +80,18 @@ export default function HomeContainer() {
         setResults([]);
     };
 
-    const handleAnalyze = async (song: ISongMetadata, forceRefresh: boolean = false) => {
+    /*
+     * Home generates (or fetches from cache), then hands off to the song's own
+     * page, which reads the now-cached analysis. The loading view stays up
+     * through the navigation, so there is no flash of the dashboard between.
+     */
+    const handleAnalyze = async (song: ISongMetadata) => {
         if (!song) return;
         setView('loading');
 
         try {
-            const response = await apiFetch<AnalysisResponse>(`/analysis/analyze`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id: song.id,
-                    album: song.album,
-                    title: song.title,
-                    artist: song.artist,
-                    imageUrl: song.imageUrl,
-                    spotifyUrl: song.spotifyUrl,
-                    previewUrl: song.previewUrl,
-                    forceRefresh
-                }),
-            });
-
-            setAnalysisData(response.data);
-            setIsFromCache(response.data.fromCache || false);
-            setIsFavorited(response.data.isFavorited === true);
-            setView('analysis');
+            await analyzeSong(song);
+            router.push(`/song/${encodeURIComponent(song.id)}`);
         } catch (error) {
             /*
              * ErrorView only splits "server side, come back later" (500) from
@@ -127,16 +108,6 @@ export default function HomeContainer() {
         }
     }
 
-    /*
-     * A song picked on `/me` arrives through sessionStorage, since the analysis
-     * view has no URL of its own. Read once on mount: the read also clears it,
-     * so StrictMode's second mount and any later reload find nothing to replay.
-     */
-    useEffect(() => {
-        const pendingSong = consumePendingAnalysis();
-        if (pendingSong) void handleAnalyze(pendingSong);
-    }, []);
-
     const handleBackToDashboard = () => {
         setView('dashboard');
         setIsSearching(false);
@@ -145,7 +116,6 @@ export default function HomeContainer() {
     const renderView = () => {
         if (view === 'loading') return <LoadingView />;
         if (view === 'error') return <ErrorView status={errorStatus} onBack={handleBackToDashboard} />;
-        if (view === 'analysis' && analysisData) return <AnalyzedView data={analysisData} onBack={handleBackToDashboard} isFromCache={isFromCache} isFavorited={isFavorited} onRegenerate={() => handleAnalyze(analysisData.song, true)} />;
 
         return (
             <div className="min-h-screen bg-black text-white selection:bg-zinc-800 selection:text-zinc-200">

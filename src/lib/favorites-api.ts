@@ -19,6 +19,13 @@ export function fetchFavorites(
     ).then((response) => response.data);
 }
 
+/* The heart's state for one song, asked by the browser after the song page loads. */
+export function fetchFavoriteState(songId: string, signal?: AbortSignal): Promise<boolean> {
+    return withSessionRetry(() =>
+        apiFetch<IFavoriteState>(`/favorites/${encodeURIComponent(songId)}`, { signal }),
+    ).then((response) => response.data.isFavorited);
+}
+
 /*
  * Both writes are idempotent on the server — adding twice or removing a song
  * that is not favourited still answers 200 — so they are safe to replay after

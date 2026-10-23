@@ -20,6 +20,25 @@ interface FavoriteButtonProps {
     initialIsFavorited: boolean;
 }
 
+/*
+ * Stand-in while the heart's state is still unknown (a signed-in visitor whose
+ * favourite lookup has not answered yet). Same footprint as the real button,
+ * so nothing shifts when it swaps in.
+ */
+export function FavoriteButtonPlaceholder() {
+    return (
+        <button
+            type="button"
+            disabled
+            aria-busy="true"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/15 bg-white/5 backdrop-blur-md text-sm font-bold tracking-wide text-zinc-500 cursor-wait"
+        >
+            <Icon icon="ph:heart-bold" aria-hidden="true" className="w-5 h-5 animate-pulse" />
+            Yêu thích
+        </button>
+    );
+}
+
 export default function FavoriteButton({ songId, initialIsFavorited }: FavoriteButtonProps) {
     const { status } = useAuth();
     const [isFavorited, setIsFavorited] = useState(initialIsFavorited);

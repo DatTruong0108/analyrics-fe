@@ -1,3 +1,5 @@
+'use client';
+
 /* System Package */
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
@@ -7,18 +9,17 @@ import Image from "next/image";
 
 /* Application Package */
 import FooterCredits from "./footerCredits";
-import FavoriteButton from "./favoriteButton";
-import { ISongMetadata } from "@/types/dashboard/song.interface";
-import { IAnalysisResult, IAnalysisSection } from "@/types/analysis/analysis.interface";
-
-export type AnalysisWithSong = IAnalysisResult & { song: ISongMetadata };
+import FavoriteButton, { FavoriteButtonPlaceholder } from "./favoriteButton";
+import ShareButton from "./shareButton";
+import { IAnalysisSection, ISongAnalysis } from "@/types/analysis/analysis.interface";
 
 interface AnalyzedViewProps {
-    data: AnalysisWithSong;
+    data: ISongAnalysis;
     onBack: () => void;
     onRegenerate: () => void;
     isFromCache: boolean;
-    isFavorited: boolean;
+    /* null while the signed-in visitor's favourite state is still loading. */
+    isFavorited: boolean | null;
 }
 
 const lora = Lora({
@@ -200,8 +201,19 @@ export default function AnalyzedView({ data, onBack, onRegenerate, isFromCache, 
                     <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
                     >
-                        {/* Keyed by song so a different song never inherits the previous heart state. */}
-                        <FavoriteButton key={data.song.id} songId={data.song.id} initialIsFavorited={isFavorited} />
+                        <div className="flex flex-wrap items-start justify-center md:justify-start gap-3">
+                            {/* Keyed by song so a different song never inherits the previous heart state. */}
+                            {isFavorited === null ? (
+                                <FavoriteButtonPlaceholder />
+                            ) : (
+                                <FavoriteButton key={data.song.id} songId={data.song.id} initialIsFavorited={isFavorited} />
+                            )}
+                            <ShareButton
+                                path={`/song/${encodeURIComponent(data.song.id)}`}
+                                title={`${data.song.title} - ${data.song.artist}`}
+                                text={`Phân tích lời bài hát "${data.song.title}" của ${data.song.artist} trên Analyrics`}
+                            />
+                        </div>
                     </motion.div>
                 </div>
             </header>
