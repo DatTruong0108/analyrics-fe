@@ -10,19 +10,20 @@ import { AnimatePresence, motion } from "framer-motion";
 import SongCard from "@/components/dashboard/songCard";
 import SongCardSkeleton from "@/components/dashboard/songCardSkeleton";
 import { ApiError, isAbortError } from "@/lib/api";
-import { EASE_OUT, gridItemTransition } from "@/lib/motion";
+import { EASE_OUT, EXIT_TRANSITION, gridItemTransition } from "@/lib/motion";
 import { setPendingAnalysis } from "@/lib/pending-analysis";
-import { fetchHistory } from "@/lib/profile-api";
+import { MAX_HISTORY_PAGE_LIMIT, fetchHistory, removeHistoryItem } from "@/lib/profile-api";
 import { IHistoryItem } from "@/types/profile/profile.interface";
 
 /* Multiple of the 3-column grid, so every full page fills its rows. */
 const PAGE_SIZE = 9;
 const FALLBACK_LOAD_ERROR = "Không thể tải lịch sử phân tích.";
+const FALLBACK_DELETE_ERROR = "Không thể xoá bài hát khỏi lịch sử.";
 
 type InitialState = "loading" | "ready" | "error";
 
-const toMessage = (error: unknown): string =>
-    error instanceof ApiError ? error.message : FALLBACK_LOAD_ERROR;
+const toMessage = (error: unknown, fallback = FALLBACK_LOAD_ERROR): string =>
+    error instanceof ApiError ? error.message : fallback;
 
 export default function HistorySection() {
     const [items, setItems] = useState<IHistoryItem[]>([]);
@@ -32,6 +33,10 @@ export default function HistorySection() {
     const [initialError, setInitialError] = useState<string | null>(null);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+    /* Songs whose DELETE is in flight; each card tracks its own removal. */
+    const [deletingIds, setDeletingIds] = useState<ReadonlySet<string>>(() => new Set());
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     /*
      * Synchronous guard against a second request while one is in flight: a
@@ -40,6 +45,15 @@ export default function HistorySection() {
      */
     const isFetchingRef = useRef(false);
     const abortRef = useRef<AbortController | null>(null);
+    /* Synchronous twin of `deletingIds`, so a double click cannot send two DELETEs. */
+    const deletingRef = useRef(new Set<string>());
+    /* How many cards are loaded, read by the post-delete reload to keep that window. */
+    const loadedCountRef = useRef(0);
+    const headingRef = useRef<HTMLHeadingElement>(null);
+
+    useEffect(() => {
+        loadedCountRef.current = items.length;
+    }, [items]);
 
     const loadPage = useCallback(async (offset: number) => {
         if (isFetchingRef.current) return;
@@ -105,6 +119,67 @@ export default function HistorySection() {
         };
     }, [loadPage]);
 
+    /*
+     * Quiet re-fetch after a delete: the list stays on screen (no skeleton) and
+     * is swapped in place, refilled to as many cards as were loaded so the gap
+     * the removed song left is filled by the next one.
+     *
+     * It supersedes any request in flight — a pending "load more" or an older
+     * reload — since its answer is the newer view of the history.
+     */
+    const reloadList = useCallback(async () => {
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        isFetchingRef.current = true;
+        setIsRefreshing(true);
+
+        const limit = Math.min(Math.max(loadedCountRef.current, PAGE_SIZE), MAX_HISTORY_PAGE_LIMIT);
+
+        try {
+            const page = await fetchHistory(limit, 0, controller.signal);
+            setItems(page.items);
+            setTotal(page.total);
+            setHasMore(page.hasMore);
+        } catch {
+            /*
+             * Abort or failure alike: the delete already succeeded and the card
+             * is already gone locally, so the list on screen is still correct —
+             * just one card short until the next load.
+             */
+        } finally {
+            if (abortRef.current === controller) {
+                isFetchingRef.current = false;
+                setIsRefreshing(false);
+                setIsLoadingMore(false);
+            }
+        }
+    }, []);
+
+    const handleRemove = async (item: IHistoryItem, hadFocus: boolean) => {
+        if (deletingRef.current.has(item.id)) return;
+
+        deletingRef.current.add(item.id);
+        setDeletingIds(new Set(deletingRef.current));
+        setDeleteError(null);
+
+        try {
+            await removeHistoryItem(item.id);
+
+            /* Drop the card now so the removal feels instant, then resync from the server. */
+            setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+            setTotal((prev) => Math.max(prev - 1, 0));
+            /* The focused × button is about to unmount; keep keyboard users in the section. */
+            if (hadFocus) headingRef.current?.focus();
+            void reloadList();
+        } catch (error) {
+            setDeleteError(toMessage(error, FALLBACK_DELETE_ERROR));
+        } finally {
+            deletingRef.current.delete(item.id);
+            setDeletingIds(new Set(deletingRef.current));
+        }
+    };
+
     const handleLoadMore = () => {
         if (isFetchingRef.current) return;
         void loadPage(items.length);
@@ -117,7 +192,12 @@ export default function HistorySection() {
         <section aria-labelledby="history-heading" className="space-y-6">
             <div className="flex items-end justify-between gap-4 border-b border-zinc-900 pb-4">
                 <div>
-                    <h2 id="history-heading" className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                    <h2
+                        id="history-heading"
+                        ref={headingRef}
+                        tabIndex={-1}
+                        className="text-2xl md:text-3xl font-bold text-white tracking-tight outline-none"
+                    >
                         Lịch sử phân tích
                     </h2>
                     <p className="text-sm text-zinc-500 mt-1">Những bài hát bạn đã giải mã gần đây</p>
@@ -137,6 +217,22 @@ export default function HistorySection() {
                     )}
                 </AnimatePresence>
             </div>
+
+            <AnimatePresence>
+                {initialState === "ready" && deleteError && (
+                    <motion.p
+                        role="alert"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: EASE_OUT }}
+                        className="flex items-center gap-1.5 text-xs text-red-400"
+                    >
+                        <Icon icon="ph:warning-circle-bold" aria-hidden="true" className="w-3.5 h-3.5" />
+                        {deleteError}
+                    </motion.p>
+                )}
+            </AnimatePresence>
 
             <AnimatePresence mode="wait" initial={false}>
                 <motion.div
@@ -193,30 +289,75 @@ export default function HistorySection() {
                     )}
 
                     {initialState === "ready" && items.length > 0 && (
-                        <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {items.map((item, index) => (
-                                <motion.li
-                                    key={item.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={gridItemTransition(index, PAGE_SIZE)}
-                                >
-                                    {/*
-                                        A real link, so it is keyboard- and middle-click-friendly.
-                                        The song rides along in sessionStorage; the home page
-                                        picks it up and opens the analysis (served from the DB
-                                        cache, not a new AI call).
-                                    */}
-                                    <Link
-                                        href="/"
-                                        onClick={() => setPendingAnalysis(item)}
-                                        aria-label={`Xem bản phân tích ${item.title} - ${item.artist}`}
-                                        className="block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                                    >
-                                        <SongCard song={item} />
-                                    </Link>
-                                </motion.li>
-                            ))}
+                        <ul
+                            aria-busy={isRefreshing}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                        >
+                            <AnimatePresence initial={false}>
+                                {items.map((item, index) => {
+                                    const isDeleting = deletingIds.has(item.id);
+
+                                    return (
+                                        <motion.li
+                                            key={item.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, transition: EXIT_TRANSITION }}
+                                            transition={gridItemTransition(index, PAGE_SIZE)}
+                                            aria-busy={isDeleting}
+                                            className="relative"
+                                        >
+                                            {/*
+                                                A real link, so it is keyboard- and middle-click-friendly.
+                                                The song rides along in sessionStorage; the home page
+                                                picks it up and opens the analysis (served from the DB
+                                                cache, not a new AI call).
+
+                                                Blocked while deleting: opening the analysis records a
+                                                view, which would put the song straight back in history.
+                                            */}
+                                            <Link
+                                                href="/"
+                                                onClick={(event) => {
+                                                    if (isDeleting) {
+                                                        event.preventDefault();
+                                                        return;
+                                                    }
+                                                    setPendingAnalysis(item);
+                                                }}
+                                                aria-disabled={isDeleting}
+                                                tabIndex={isDeleting ? -1 : undefined}
+                                                aria-label={`Xem bản phân tích ${item.title} - ${item.artist}`}
+                                                className={`block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-opacity ${isDeleting ? "opacity-50 pointer-events-none" : ""}`}
+                                            >
+                                                <SongCard song={item} showArrow={false} />
+                                            </Link>
+
+                                            {/*
+                                                Sits in the card's trailing slot, where other lists show the
+                                                arrow. A sibling of the link, not a child: a button inside an
+                                                <a> is invalid HTML.
+                                            */}
+                                            <button
+                                                type="button"
+                                                onClick={(event) =>
+                                                    void handleRemove(item, event.currentTarget === document.activeElement)
+                                                }
+                                                disabled={isDeleting}
+                                                aria-label={`Xoá ${item.title} - ${item.artist} khỏi lịch sử`}
+                                                title="Xoá khỏi lịch sử"
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-8 h-8 rounded-full text-neutral-500 transition-colors cursor-pointer enabled:hover:text-white enabled:hover:bg-white/10 outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-wait"
+                                            >
+                                                <Icon
+                                                    icon={isDeleting ? "ph:spinner-gap-bold" : "ph:x-bold"}
+                                                    aria-hidden="true"
+                                                    className={`w-5 h-5 ${isDeleting ? "animate-spin" : ""}`}
+                                                />
+                                            </button>
+                                        </motion.li>
+                                    );
+                                })}
+                            </AnimatePresence>
 
                             {isLoadingMore &&
                                 Array.from({ length: pendingSkeletons }).map((_, i) => (
@@ -250,7 +391,8 @@ export default function HistorySection() {
                     <motion.button
                         type="button"
                         onClick={handleLoadMore}
-                        disabled={isLoadingMore}
+                        /* A post-delete reload owns the request slot; "load more" waits for it. */
+                        disabled={isLoadingMore || isRefreshing}
                         aria-busy={isLoadingMore}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

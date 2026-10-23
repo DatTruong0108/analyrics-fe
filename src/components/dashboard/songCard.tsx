@@ -7,7 +7,17 @@ import Image from "next/image";
 /* Application Package */
 import { ISongMetadata } from "@/types/dashboard/song.interface";
 
-export default function SongCard({ song }: { song: ISongMetadata }) {
+interface SongCardProps {
+    song: ISongMetadata;
+    /*
+     * Off when the parent overlays its own action (e.g. history's × button) on
+     * the trailing slot. The slot keeps its width so the title still truncates
+     * before reaching the overlay.
+     */
+    showArrow?: boolean;
+}
+
+export default function SongCard({ song, showArrow = true }: SongCardProps) {
     if (!song) return null;
 
     return (
@@ -38,10 +48,14 @@ export default function SongCard({ song }: { song: ISongMetadata }) {
                     </p>
                 </div>
 
-                <div className="text-neutral-600 group-hover:text-white transition-all duration-300 
+                {showArrow ? (
+                    <div className="text-neutral-600 group-hover:text-white transition-all duration-300
                         opacity-30 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 drop-shadow-lg song-icon">
-                    <Icon icon="ph:caret-right-bold" className="w-6 h-6" />
-                </div>
+                        <Icon icon="ph:caret-right-bold" className="w-6 h-6" />
+                    </div>
+                ) : (
+                    <div aria-hidden="true" className="w-8 h-8 shrink-0" />
+                )}
 
             </div>
         </div>
