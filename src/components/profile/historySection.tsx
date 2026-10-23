@@ -11,7 +11,6 @@ import SongCard from "@/components/dashboard/songCard";
 import SongCardSkeleton from "@/components/dashboard/songCardSkeleton";
 import { ApiError, isAbortError } from "@/lib/api";
 import { EASE_OUT, EXIT_TRANSITION, gridItemTransition } from "@/lib/motion";
-import { setPendingAnalysis } from "@/lib/pending-analysis";
 import { MAX_HISTORY_PAGE_LIMIT, fetchHistory, removeHistoryItem } from "@/lib/profile-api";
 import { IHistoryItem } from "@/types/profile/profile.interface";
 
@@ -308,22 +307,17 @@ export default function HistorySection() {
                                             className="relative"
                                         >
                                             {/*
-                                                A real link, so it is keyboard- and middle-click-friendly.
-                                                The song rides along in sessionStorage; the home page
-                                                picks it up and opens the analysis (served from the DB
-                                                cache, not a new AI call).
+                                                A real link to the song's own page, so it is keyboard-,
+                                                middle-click- and share-friendly. The page reads the
+                                                cached analysis — never a new AI call.
 
                                                 Blocked while deleting: opening the analysis records a
                                                 view, which would put the song straight back in history.
                                             */}
                                             <Link
-                                                href="/"
+                                                href={`/song/${encodeURIComponent(item.id)}`}
                                                 onClick={(event) => {
-                                                    if (isDeleting) {
-                                                        event.preventDefault();
-                                                        return;
-                                                    }
-                                                    setPendingAnalysis(item);
+                                                    if (isDeleting) event.preventDefault();
                                                 }}
                                                 aria-disabled={isDeleting}
                                                 tabIndex={isDeleting ? -1 : undefined}

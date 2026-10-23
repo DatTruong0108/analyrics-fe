@@ -11,7 +11,6 @@ import SongCard from "@/components/dashboard/songCard";
 import SongCardSkeleton from "@/components/dashboard/songCardSkeleton";
 import { ApiError, isAbortError } from "@/lib/api";
 import { EASE_OUT, gridItemTransition } from "@/lib/motion";
-import { setPendingAnalysis } from "@/lib/pending-analysis";
 import { fetchFavorites } from "@/lib/favorites-api";
 import { IFavoriteItem } from "@/types/favorites/favorite.interface";
 
@@ -198,10 +197,9 @@ export default function FavoritesSection() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={gridItemTransition(index, PAGE_SIZE)}
                                 >
-                                    {/* Same hand-off as history: the home page opens the cached analysis. */}
+                                    {/* The song's own page, which reads the cached analysis. */}
                                     <Link
-                                        href="/"
-                                        onClick={() => setPendingAnalysis(item)}
+                                        href={`/song/${encodeURIComponent(item.id)}`}
                                         aria-label={`Xem bản phân tích ${item.title} - ${item.artist}`}
                                         className="block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                                     >

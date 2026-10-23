@@ -23,6 +23,19 @@ export function fetchHistory(
 }
 
 /*
+ * Moves the song to the top of the caller's history. The song page is
+ * server-rendered without the user's session, so the browser reports the view.
+ * Idempotent, so safe to replay after a session refresh.
+ */
+export async function recordHistoryView(songId: string): Promise<void> {
+    await withSessionRetry(() =>
+        apiFetch<{ id: string }>(`/analysis/history/${encodeURIComponent(songId)}`, {
+            method: "POST",
+        }),
+    );
+}
+
+/*
  * Resolves once the song is no longer in the caller's history. A 404 means it
  * already is not — removed from another tab, or a double submit that lost the
  * race — which is the outcome the caller asked for, not a failure to show.
